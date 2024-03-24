@@ -76,7 +76,7 @@ services:
         condition: service_completed_successfully
     mem_limit: 512m
     mem_reservation: 128M
-    cpus: 0.5
+    cpus: 0.3
 
   airflow-scheduler:
     <<: *airflow-common
@@ -92,9 +92,9 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-    mem_limit: 128m
-    mem_reservation: 128M
-    cpus: 0.5
+    # mem_limit: 128m
+    # mem_reservation: 128M
+    # cpus: 0.7
 
   airflow-init:
     <<: *airflow-common
