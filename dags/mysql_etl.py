@@ -16,6 +16,13 @@ def main_dag():
                 "database_name": "prod1",
                 "table_schema": "table_schema",
                 "table_primary_key": "sid"
+            },
+            "table_two": {
+                "database_name": "prod1",
+                "table_schema": "table_schema",
+                "table_primary_key": "sid",
+                "delta": True,
+                "delta_key": "last_updated"
             }
         },
         deserialize_json=True
@@ -34,7 +41,9 @@ def main_dag():
             page_size=10000,
             partition_by="date",
             local=True,
-            offset=0
+            offset=0,
+            delta=tables_configuration[table].get("delta", False),
+            delta_key=tables_configuration[table].get("delta_key", None)
         )
 
         extract_table
