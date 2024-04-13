@@ -2,6 +2,7 @@ import datetime
 from airflow.decorators import dag, task
 from airflow.models import Variable
 from airflow.providers.mysql.operators.mysql import MySqlOperator
+from datatype_operations import DatatypePyarrowTransformer
 
 
 
@@ -21,11 +22,20 @@ def main_dag():
     )
 
     @task()
-    def write_to_variables(response):
+    def generate_pyarrow_metadata(response):
         from airflow.models import Variable
-        Variable.set("tables_metadata", response)
 
-    write_to_variables(extract_task.output)
+        transformer = DatatypePyarrowTransformer(origin_datababase="mysql")
+        tables_metadata = {}
+        for r in response:
+            schema_name, table_name, column_name, data_type = r
+            if table_name in tables_metadata:
+                tables_metadata[f"{schema_name}.{table_name}"].append({column_name: {"mysql_datatype": data_type, "pyarrow_datatype": transformer.transform_datatype(data_type)}})
+            else:
+                tables_metadata[f"{schema_name}.{table_name}"] = [{column_name: {"mysql_datatype": data_type, "pyarrow_datatype": transformer.transform_datatype(data_type)}}]
 
-    
+        Variable.set("tables_metadata", tables_metadata)
+
+    generate_pyarrow_metadata(extract_task.output)
+
 main_dag()
