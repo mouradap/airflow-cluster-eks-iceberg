@@ -1,4 +1,5 @@
 boto3
+pyiceberg[glue]
 pandas
 pyarrow
 pyiceberg

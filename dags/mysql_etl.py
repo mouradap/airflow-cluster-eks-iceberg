@@ -4,9 +4,10 @@ from airflow.models import Variable
 from CustomDbS3Operator import CustomDbS3Operator
 
 @dag(
-    dag_id="extract_from_s3",
+    dag_id="extract_table",
     start_date=datetime.datetime(2024, 3, 23),
-    schedule="0 0 * * *"
+    schedule="0 0 * * *",
+    catchup=False
 )
 def main_dag():
     tables_configuration = Variable.get(

@@ -74,24 +74,24 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-    mem_limit: 512m
-    mem_reservation: 128M
-    cpus: 0.3
+    mem_limit: 1024m
+    mem_reservation: 512M
+    cpus: 1
 
-  airflow-scheduler:
-    <<: *airflow-common
-    command: scheduler
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: always
-    depends_on:
-      <<: *airflow-common-depends-on
-      airflow-init:
-        condition: service_completed_successfully
+  # airflow-scheduler:
+  #   <<: *airflow-common
+  #   command: scheduler
+  #   healthcheck:
+  #     test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 30s
+  #   restart: always
+  #   depends_on:
+  #     <<: *airflow-common-depends-on
+  #     airflow-init:
+  #       condition: service_completed_successfully
     # mem_limit: 128m
     # mem_reservation: 128M
     # cpus: 0.7

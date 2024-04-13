@@ -104,9 +104,12 @@ class CustomDbS3Operator(BaseOperator):
         order_clause = table_primary_key
         if delta_configuration:
             where_clause = delta_configuration
-            order_clause = f"{table_primary_key}, {self.delta_key}"
+            order_clause = f"{self.delta_key}"
+        partition = ""
         while True:
             query = f"SELECT * FROM {table_schema}.{table_name} {where_clause} ORDER BY {order_clause} LIMIT {page_size} OFFSET {offset};"
+            # self.log.info(query)
+            print(query)
             records_df = sql_hook.get_pandas_df(query)
             if len(records_df) == 0:
                 break # No more records to fetch
@@ -143,12 +146,14 @@ class CustomDbS3Operator(BaseOperator):
     def execute(self, context):
         self.log.info(f"Running CustomDbS3Operator to load table {self.table_schema}.{self.table_name} to S3")
         self.log.info(f"Local file save set to: {self.local}")
+        self.log.info(f"Table delta: {self.delta}")
+        self.log.info(f"Table delta key: {self.delta_key}")
 
         delta_configuration = self.__get_delta_configuration()
 
         db_hook = self.__get_sql_hook(self.sql_connection)
 
-        partition = self.stream_table(
+        self.stream_table(
             db_hook,
             self.table_schema,
             self.table_name,
@@ -157,4 +162,4 @@ class CustomDbS3Operator(BaseOperator):
             self.offset,
             delta_configuration
         )
-        return partition
+        return None
