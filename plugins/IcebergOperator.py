@@ -1,18 +1,19 @@
-import pyarrow as pa
-import pyiceberg.types as pi_types
-from pyiceberg.schema import Schema
-from airflow.models.baseoperator import BaseOperator
-from airflow.utils.decorators import apply_defaults
-import re
-from datetime import datetime
-import pyarrow.parquet as pq
 import io
+import re
 import boto3
-from pyiceberg.catalog import load_catalog
-from pyiceberg.schema import Schema
-from pyiceberg.table.sorting import SortOrder, SortField
-from pyiceberg.transforms import IdentityTransform
+from datetime import datetime
+import pyarrow as pa
+import pyarrow.parquet as pq
+import pyiceberg.types as pi_types
+
 from airflow.exceptions import AirflowException
+from airflow.utils.decorators import apply_defaults
+from airflow.models.baseoperator import BaseOperator
+
+from pyiceberg.schema import Schema
+from pyiceberg.catalog import load_catalog
+from pyiceberg.transforms import IdentityTransform
+from pyiceberg.table.sorting import SortOrder, SortField
 
 
 class IcebergOperator(BaseOperator):
@@ -31,6 +32,7 @@ class IcebergOperator(BaseOperator):
         catalog_namespace: str = "",
         catalog_uri: str = "",
         overwrite_table: bool = True,
+        region_name: str = "sa-east-1",
         **kwargs,
     ):
         self.origin_database = origin_database.lower()
@@ -86,25 +88,26 @@ class IcebergOperator(BaseOperator):
         self.table_schema_name = table_schema_name
         self.catalog_namespace = catalog_namespace
         self.catalog_uri = catalog_uri
-        self.catalog = load_catalog("glue", **{"type": "glue"})
+        self.catalog = load_catalog(
+            "glue", **{"type": "glue", "region_name": region_name}
+        )
         self.overwrite_table = overwrite_table
-        if table_metadata:
-            self.table_metadata = table_metadata
-        else:
-            self.table_metadata = self.__retrieve_metadata_from_airflow_variables(table_name)
+        self.table_metadata = table_metadata
 
         super().__init__(**kwargs)
 
-    
     def __retrieve_metadata_from_airflow_variables(self, table_schema_name, table_name):
         from airflow.models import Variable
-        all_metadata = Variable.get("tables_metadata")
+
+        all_metadata = Variable.get("tables_metadata", {}, deserialize_json=True)
         table_key = f"{table_schema_name}.{table_name}"
 
         table_metadata = all_metadata.get(table_key, None)
         if table_metadata:
             return table_metadata
-        raise AirflowException("No metadata found either as input or in tables_metadata Variable.")
+        raise AirflowException(
+            "No metadata found either as input or in tables_metadata Variable."
+        )
 
     def _read_parquet_from_s3(self, key):
         s3_client = boto3.client("s3")
@@ -269,6 +272,10 @@ class IcebergOperator(BaseOperator):
         return pa_table
 
     def execute(self, context):
+        if not self.table_metadata:
+            self.table_metadata = self.__retrieve_metadata_from_airflow_variables(
+                self.table_schema_name, self.table_name
+            )
         self.log.info(f"Initializing IcebergOperator for table {self.table_name}")
 
         table_exists = self.check_table_exists()
