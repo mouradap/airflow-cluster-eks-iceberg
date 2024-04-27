@@ -29,10 +29,11 @@ def main_dag():
         tables_metadata = {}
         for r in response:
             schema_name, table_name, column_name, data_type = r
-            if table_name in tables_metadata:
-                tables_metadata[f"{schema_name}.{table_name}"].append({column_name: {"mysql_datatype": data_type, "pyarrow_datatype": transformer.transform_datatype(data_type)}})
+            key = f"{schema_name}.{table_name}"
+            if key in tables_metadata:
+                tables_metadata[key].append({column_name: {"original_datatype": data_type}})
             else:
-                tables_metadata[f"{schema_name}.{table_name}"] = [{column_name: {"mysql_datatype": data_type, "pyarrow_datatype": transformer.transform_datatype(data_type)}}]
+                tables_metadata[key] = [{column_name: {"original_datatype": data_type}}]
 
         Variable.set("tables_metadata", tables_metadata)
 

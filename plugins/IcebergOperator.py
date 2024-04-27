@@ -9,13 +9,10 @@ import pyarrow.parquet as pq
 import io
 import boto3
 from pyiceberg.catalog import load_catalog
-from pyiceberg.table import Table
 from pyiceberg.schema import Schema
-from pyiceberg.types import DoubleType, StringType, TimestampType, NestedField
-from pyiceberg.partitioning import PartitionSpec, PartitionField
-from pyiceberg.transforms import YearTransform, MonthTransform, DayTransform
 from pyiceberg.table.sorting import SortOrder, SortField
 from pyiceberg.transforms import IdentityTransform
+from airflow.exceptions import AirflowException
 
 
 class IcebergOperator(BaseOperator):
@@ -87,13 +84,27 @@ class IcebergOperator(BaseOperator):
         self.database_name = database_name
         self.table_name = table_name
         self.table_schema_name = table_schema_name
-        self.table_metadata = table_metadata
         self.catalog_namespace = catalog_namespace
         self.catalog_uri = catalog_uri
         self.catalog = load_catalog("glue", **{"type": "glue"})
         self.overwrite_table = overwrite_table
+        if table_metadata:
+            self.table_metadata = table_metadata
+        else:
+            self.table_metadata = self.__retrieve_metadata_from_airflow_variables(table_name)
 
         super().__init__(**kwargs)
+
+    
+    def __retrieve_metadata_from_airflow_variables(self, table_schema_name, table_name):
+        from airflow.models import Variable
+        all_metadata = Variable.get("tables_metadata")
+        table_key = f"{table_schema_name}.{table_name}"
+
+        table_metadata = all_metadata.get(table_key, None)
+        if table_metadata:
+            return table_metadata
+        raise AirflowException("No metadata found either as input or in tables_metadata Variable.")
 
     def _read_parquet_from_s3(self, key):
         s3_client = boto3.client("s3")
